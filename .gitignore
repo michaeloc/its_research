@@ -1,0 +1,6 @@
+# Don't track content of these folders
+data/
+dublin/dublin
+*.npy
+recife/GTFSjaneiro
+
