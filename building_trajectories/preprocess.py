@@ -7,11 +7,8 @@ class PreProcess():
     import numpy as np
     import utm
     import math
-    from gmplot import gmplot
     import geopy.distance
     import uuid
-    
-    from geopy.distance import vincenty
 
     def __init__(self, treshold=50):
         self.treshold = treshold
@@ -59,7 +56,7 @@ class PreProcess():
         data.loc[:,'Instante'] = self.pd.to_datetime(data['Instante'])
     
     def out_of_bound(self,coord1, coord2):
-        return self.geopy.distance.vincenty(coord1,coord2).m > self.treshold
+        return self.geopy.distance.geodesic(coord1,coord2).m > self.treshold
 
     def cluster_points(self,data):
         similar_idex = {}
@@ -111,7 +108,7 @@ class PreProcess():
         return dataframe
     
     def distance_in_meters(self,x,y):
-        return self.vincenty((x[0],x[1]),(y[0],y[1])).m
+        return self.geopy.distance.geodesic((x[0],x[1]),(y[0],y[1])).m
     
     def calculate_distance_matrix(self,data):
         return pairwise_distances(data, metric=self.distance_in_meters)
