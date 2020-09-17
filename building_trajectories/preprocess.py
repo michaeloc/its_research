@@ -1,24 +1,24 @@
 import pandas as pd
 from sklearn.metrics.pairwise import pairwise_distances
+import pandas as pd
+import copy
+import numpy as np
+import utm
+import math
+import geopy.distance
+import uuid
 
 class PreProcess():
-    import pandas as pd
-    import copy
-    import numpy as np
-    import utm
-    import math
-    import geopy.distance
-    import uuid
 
     def __init__(self, treshold=50):
         self.treshold = treshold
-    
+
     def clean_data(self, data):
         non_zero_data = data.where((data['CoordX']!=0) & (data['CoordY']!=0) & (data['Linea']!=0) & (data['Ruta']!=0))
         data_without_nan = non_zero_data.dropna()    
         filter_regex_matricula = data_without_nan.matricula.str.match('[A-Z]{3}[0-9]{4}')  
         return data_without_nan[filter_regex_matricula]   
-    
+
     def select_by_parameter(self,data, parameter, value):
         return data.loc[data[parameter]==value]
     
