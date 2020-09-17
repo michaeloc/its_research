@@ -13,9 +13,11 @@ Features to use this class
 ['lat','lng','instante','rota','velocidade','posicao','viaje','matricula_id','lat_uber','lng_uber','label']
 '''
 class Sentences(PreprocessData):
-    def __init__(self, list_of_features):
+
+    def __init__(self, full_features, trajectory_features):
         super().__init__()
-        self.features = list_of_features
+        self.full_features = full_features
+        self.trajectory_features = trajectory_features
         self.prepro = PreProcess()
 
     def _has_min_quantity_of_points(self,items):
@@ -23,64 +25,49 @@ class Sentences(PreprocessData):
 
     def is_window(self, delta_time):
         return delta_time < 5
-    
+
     def delta_time(self, t1, t2)->float:
         ##Return time difference between time in seconds
         t1 = pd.to_datetime(t1)
         t2 = pd.to_datetime(t2)
         delta = pd.Timedelta(np.abs(t2-t1))
         return delta.seconds
-    
-    def get_element_by_element(self, _id, data):
-        row = data[data['id']==_id]
-        row = row[self.features].values[0]
-        return row.tolist()
-    
+
     def create_sentences(self, data)->list:
-        old_matricula = data.iloc[0].matricula_id
-    
-        old_viaje = data.iloc[0].viaje
-    
-        old_time = data.iloc[0].instante
-    
-        old_rota = data.iloc[0].rota
-    
+        actual_trajectory = data[self.trajectory_features].iloc[0].values
+        print(actual_trajectory)
+        #old_matricula = data.iloc[0].matricula_id
+        #old_viaje = data.iloc[0].viaje
+        actual_time = data.iloc[0].timestamp
+        #old_rota = data.iloc[0].rota
         len_sentence = []
-    
         partial_list, complete_list = [], []
-    
         iterator = 0
-    
         for idx in tqdm(data.index):
-            if self.is_valid_point(data, old_matricula, old_viaje, old_time, old_rota, idx):
-
-                partial_list.append(self.get_element_by_element(data.at[idx,'id'], data))
-            else:
-                if self._has_min_quantity_of_points(partial_list):
-                    len_sentence.append(len(partial_list))
-                    complete_list.append(partial_list)
-
-                partial_list = []
-                partial_list.append(self.get_element_by_element(data.at[idx,'id'], data))
-
-
-            old_matricula = data.at[idx,'matricula_id']
-            old_viaje = data.at[idx,'viaje']
-            old_time = data.at[idx,'instante']
-            old_rota = data.at[idx,'rota']
+            print(idx)
+            if (self.is_valid_point(data, idx, actual_trajectory)):
+                partial_list.append(data.loc[idx].tolist())
+#            else:
+#                if self._has_min_quantity_of_points(partial_list):
+#                    len_sentence.append(len(partial_list))
+#                    complete_list.append(partial_list)
+#                partial_list = []
+#                partial_list.append(self.get_element_by_element(data.at[idx,'id'], data))
+#
+            actual_time = data.loc[idx]
             iterator +=1
-
-
         if self._has_min_quantity_of_points(partial_list):
             complete_list.append(partial_list)
             len_sentence.append(len(partial_list))
-
         print(iterator)
         return complete_list
 
-    def is_valid_point(self, data, old_matricula, old_viaje, old_time, old_rota, idx):
-        return (data.at[idx,'matricula_id'] == old_matricula) and (data.at[idx,'viaje'] == old_viaje) and (self.is_window(self.delta_time(old_time,data.at[idx,'instante']))) and (data.at[idx,'rota'] == old_rota)
-    
+    def is_valid_point(self, data, idx, actual_trajectory):
+        return (all(data[self.trajectory_features].loc[idx] == actual_trajectory)
+                & self.is_window( self.delta_time( old_time,data.at[idx,'instante']
+#                    )))
+#        )
+
     def label_encoder(self, data):
         for items in tqdm(data):
             for item in items:
@@ -92,7 +79,7 @@ class Sentences(PreprocessData):
                     item[10]=2.0
                 else:
                     item[10]=3.0
-    
+
     def bearing(self, point1, point2):
         lat1 = math.radians(point1[0])
         
