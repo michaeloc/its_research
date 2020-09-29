@@ -10,18 +10,57 @@ import uuid
 
 class PreProcess():
 
-    def __init__(self, treshold=50):
+    def __init__(self, treshold=50, dataset='dublin'):
         self.treshold = treshold
+        self.coordinates = {'dublin': ['lng', 'lat']}
+        self.dataset = dataset
 
     def clean_data(self, data):
+        data = self.adjust_types(data)
+        #print( '{} {}'.format(*self.coordinates[self.dataset]))
+        #data = self.create_mercator_coord(data,*self.coordinates[self.dataset] )
+        return data
+
+    def adjust_types(self, data):
+        data.stop = data.stop.astype('bool')
+        data.congestion = data.congestion.astype('bool')
+        data['datetime'] = pd.to_datetime(data["timestamp"], unit='us')
+        data['datetime_hour'] = data["datetime"].dt.hour
+        data['datetime_day'] = data["datetime"].dt.day
+        #data['datetime_month'] = data["datetime"].dt.month
+        #data['datetime_year'] = data["datetime"].dt.year
+        #data.drop(['direction'], axis=1, inplace=True)
+        return data
+
+    def unique_trajectories_tuple(self, data, features):
+        trajectories = data.groupby(features).size().reset_index()
+        trajectories = trajectories[trajectories[0] > self.treshold]
+        print(len(trajectories[features].values))
+        return trajectories[features].values
+
+    def create_mercator_coord(self, data, lon, lat):
+        data[['lon_mercator','lat_mercator']] = data[[lon,lat]].apply(self._to_mercator, axis=1)
+        return data
+
+    def _to_mercator(self, coordinates):
+        lon = coordinates[0]
+        lat = coordinates[1]
+        r_major = 6378137.000
+        x = r_major * math.radians(lon)
+        scale = x/lon
+        log = math.log(math.tan(math.pi/4.0 +lat * (math.pi/180.0)/2.0))
+        y = (180.0/math.pi) * log  * scale
+        return pd.Series((x, y))
+
+    def _clean_data(self, data):
         non_zero_data = data.where((data['CoordX']!=0) & (data['CoordY']!=0) & (data['Linea']!=0) & (data['Ruta']!=0))
-        data_without_nan = non_zero_data.dropna()    
+        data_without_nan = non_zero_data.dropna()
         filter_regex_matricula = data_without_nan.matricula.str.match('[A-Z]{3}[0-9]{4}')  
         return data_without_nan[filter_regex_matricula]   
 
     def select_by_parameter(self,data, parameter, value):
         return data.loc[data[parameter]==value]
-    
+
     def coordinates_to_latlng(self, data):
         lat = []
         lng = []
@@ -33,10 +72,10 @@ class PreProcess():
         data['lat'] = self.np.array(lat)
         data['lng'] = self.np.array(lng)
         return data
-    
+
     def discretize_by_time(self,data):
         data = self._object_to_datetime(data)
-        
+
         new_time_discretized = []
         for row in range(len(data)):
             if data.iloc[row]['Instante'].time() < self.pd.to_datetime('11:59:59').time():
@@ -51,10 +90,10 @@ class PreProcess():
                 print(TimeEnum.NIGHT.value)
         data['DiscretizedInstante'] = self.np.array(new_time_discretized)
         return data
-    
+
     def _object_to_datetime(self,data):
         data.loc[:,'Instante'] = self.pd.to_datetime(data['Instante'])
-    
+
     def out_of_bound(self,coord1, coord2):
         return self.geopy.distance.geodesic(coord1,coord2).m > self.treshold
 
@@ -140,15 +179,15 @@ class TimeEnum(enum.Enum):
 
 
 
-def main():
-    data_frame = pd.read_csv('data-1535649343264.csv',sep=',')
-    preprocess = PreProcess()
-    # data_filter = preprocess.clean_data(data_frame)
-    # teste = preprocess.select_by_parameter(data_filter,'matricula','KFG9789')
-    # lat_lng = preprocess.coordinates_to_latlng(teste)
-    # clusters = preprocess.cluster_points(data_frame)
-    # print(preprocess.set_id(data_frame,clusters))
-    # preprocess.calculate_distance_matrix(data_frame.values[:,1:3])
-if __name__ == '__main__':
-    main()
+#def main():
+#    #data_frame = pd.read_csv('data-1535649343264.csv',sep=',')
+#    preprocess = PreProcess()
+#    # data_filter = preprocess.clean_data(data_frame)
+#    # teste = preprocess.select_by_parameter(data_filter,'matricula','KFG9789')
+#    # lat_lng = preprocess.coordinates_to_latlng(teste)
+#    # clusters = preprocess.cluster_points(data_frame)
+#    # print(preprocess.set_id(data_frame,clusters))
+#    # preprocess.calculate_distance_matrix(data_frame.values[:,1:3])
+#if __name__ == '__main__':
+#    #main()
 

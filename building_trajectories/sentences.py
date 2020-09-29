@@ -1,26 +1,58 @@
-from preprocess_data import PreprocessData
-from tqdm import tqdm
-from preprocess import PreProcess
-import datetime
-import numpy as np
-import pandas as pd
-import geopy
-from math import degrees
 import math
 import copy
+import datetime
+from pyspark import SparkContext
+import geopy
+from tqdm import tqdm
+import numpy as np
+import pandas as pd
+import os
+#from preprocess_data import PreprocessData
+from preprocess import PreProcess
+
 '''
 Features to use this class
 ['lat','lng','instante','rota','velocidade','posicao','viaje','matricula_id','lat_uber','lng_uber','label']
 '''
-class Sentences(PreprocessData):
+#class Sentences(PreprocessData):
+class Sentences():
 
     _cached_data = None
 
     def __init__(self, data, trajectory_features):
+        ''' Create sentences how represent trajectories
+
+        Arguments:
+        data : pandas.DataFrame -> DataFrame with raw gps points
+        trajectory_features : list -> List of features how act as trajectory's key
+
+        Internal Attributes:
+        preprocess -> Preprocess()
+        data -> Same as argument
+        trajectory_features -> Same as argument
+        trajectories -> List of all unique trajectory' keys (will control the creation of sentences)
+        '''
+
+        self.preprocess = PreProcess()
         super().__init__()
-        self.full_features = data.columns
-        self.trajectory_features = (trajectory_features)
-        self.prepro = PreProcess()
+        #data = self.preprocess.clean_data(data)
+        #self.full_features = data.columns
+        self.trajectory_features = trajectory_features
+        self.trejectories = self.preprocess.unique_trajectories_tuple(
+            data, trajectory_features)
+
+
+    def generate_sentences_matrix(self):
+        df_trajSizes = self.data.groupby(self.sentence.trajectory_features).size().reset_index()
+        trajetories_matrix = []
+        for index in df_trajSizes.index[50:60]:
+            print(index)
+            trajectory_id = df_trajSizes.loc[index][self.sentence.trajectory_features].values
+            one_trajectory = self._create_one_sentence(trajectory_id)
+            if (one_trajectory != []):
+                print('-')
+                trajetories_matrix.append(one_trajectory)
+
 
     def _has_min_quantity_of_points(self, items):
         return len(items) > 10
@@ -34,6 +66,12 @@ class Sentences(PreprocessData):
         t2 = pd.to_datetime(t2,unit='us')
         delta = pd.Timedelta(np.abs(t2 - t1))
         return delta.seconds
+
+    def parallel_sentences(self, df, sc):
+        dfs = [x for _, x in df.groupby(self.trajectory_features)]
+        #A = sc.parallelize(dfs).map(lambda x: self.create_sentences(x))
+        A = sc.parallelize(dfs).map(self.create_sentences)
+        print(A.take(5))
 
     def create_sentences(self, data) -> list:
         data = data.sort_values('timestamp')
@@ -78,7 +116,7 @@ class Sentences(PreprocessData):
             math.sin(lat1) * math.cos(lat2) *
             math.cos(math.radians(point2[1] - point1[1])))
 
-        deg = degrees(math.atan2(y, x))
+        deg = math.degrees(math.atan2(y, x))
         return (deg + 360) % 360
 
     def acceleration(self, v1, v2, deltaT) -> float:
