@@ -1,12 +1,7 @@
 import pandas as pd
-from sklearn.metrics.pairwise import pairwise_distances
-import pandas as pd
-import copy
 import numpy as np
-import utm
 import math
 import geopy.distance
-import uuid
 
 class PreProcess():
 
