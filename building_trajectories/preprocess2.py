@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import math
-import geopy.distance
+from geopy.distance import geodesic
 
 class PreProcess():
 
@@ -14,11 +14,11 @@ class PreProcess():
         self.categories = categories
         self.booleans = booleans
         self.timestamp = timestamp
-        self.timestamp_type = timestamp_type
+        self.timestamp_unit = timestamp_unit
         self.drops = drops
 
     def __call__(self, data):
-        data = self.clean_data()
+        data = self.clean_data(data)
         data = self.make_ID(data)
         data = self.set_types(data)
         data = self.set_new_features(data)
@@ -30,17 +30,18 @@ class PreProcess():
         return data
 
     def make_ID(self, data):
-        if (len(traj_ID_list)==1):
-            self.traj_ID = traj_ID_list[0]
+        if (len(self.traj_ID_list)==1):
+            self.traj_ID = self.traj_ID_list[0]
         else:
-            data_tmp = data[trajetoria].astype('string')
-            data['ID'] = data_tmp.agg('-'.join, axis=1).astype('category').cat.codes
+            self.traj_ID = 'ID'
+            data[self.traj_ID_list] = data[self.traj_ID_list].astype('str')
+            data[self.traj_ID] = data[self.traj_ID_list].agg('-'.join, axis=1).astype('category').cat.codes
         return data
 
     def set_types(self, data):
         data[self.categories] = data[self.categories].astype('category')
         data[self.booleans] = data[self.booleans].astype('bool')
-        data[ f'_{self.timestamp}'] = pd.to_datetime(df.timestamp, unit=self.timestamp_unit)
+        data[ f'_{self.timestamp}'] = pd.to_datetime(data.timestamp, unit=self.timestamp_unit)
         return data
 
 
@@ -54,7 +55,7 @@ class PreProcess():
         data = self._add_speed(data)
         data = self._add_acceleration(data)
         data = self.create_mercator_coord(data)
-        data = _discretize_time(data)
+        #data = self._discretize_time(data)
         return data
 
     def _add_speed(self, data):
@@ -85,18 +86,18 @@ class PreProcess():
 
     @staticmethod
     def _delta_time(t1, t2):
-    '''
-    Retorna diferença temporal em segundos
-    Ou np.nan se a diferença temporal para o ponto anterior
-    for superior a 5 minutos
-    '''
-    t1 = pd.to_datetime(t1,unit='us')
-    t2 = pd.to_datetime(t2,unit='us')
-    time = pd.Timedelta(np.abs(t2 - t1))
-    if (time.seconds > 5*60):
-        return np.nan
-    else:
-        return time.seconds
+        '''
+        Retorna diferença temporal em segundos
+        Ou np.nan se a diferença temporal para o ponto anterior
+        for superior a 5 minutos
+        '''
+        t1 = pd.to_datetime(t1,unit='us')
+        t2 = pd.to_datetime(t2,unit='us')
+        time = pd.Timedelta(np.abs(t2 - t1))
+        if (time.seconds > 5*60):
+            return np.nan
+        else:
+            return time.seconds
 
     def _calc_deltas(self, data_trajetoria):
         '''
@@ -112,28 +113,31 @@ class PreProcess():
             data_trajetoria[self.coordinates].shift(1).values[1:]
         ))
         delta_t = list(map(
-            lambda x, y: _delta_time(x,y),
+            lambda x, y: self._delta_time(x,y),
             data_trajetoria[self.timestamp].values[1:],
             data_trajetoria[self.timestamp].shift(1).values[1:]
         ))
         data_trajetoria['dist_old_point'] = [0, *delta_d]
         data_trajetoria['time_old_point'] = [0, *delta_t]
-        data_trajetoria = self._remove_deltatime_gt_5min(self, data_trajetoria)
+        data_trajetoria = self._remove_deltatime_gt_5min(data_trajetoria)
         return data_trajetoria
 
     def _remove_deltatime_gt_5min(self, trajetoria):
         trajetoria.sort_values('timestamp')
         ## Só pega o primeiro gap de 5 minutos
-        ts = trajetoria[trajetoria['time_old_point'].isna()][self.timestamp].values[0]
-        if (len(trajetoria[trajetoria.self.timestamp <= ts]) < 50):
+        gt5min2oldpoint = trajetoria[trajetoria['time_old_point'].isna()]
+        if (len(gt5min2oldpoint) == 0):
+            return trajetoria
+        ts = gt5min2oldpoint[self.timestamp].values[0]
+        if (len(trajetoria[trajetoria[self.timestamp] <= ts]) < 50):
             #exclui todo mundo no caso de não ter 50 pontos restantes
             return None
         else:
             # exclui só do ponto problemático em diante
-            return trajetoria[trajetoria.self.timestamp < ts].index
+            return trajetoria[trajetoria[self.timestamp] < ts]
 
     def create_mercator_coord(self, data):
-        data[['lat_mercator','lon_mercator']] = data[self.coordinates].apply(_to_mercator, axis=1)
+        data[['lat_mercator','lng_mercator']] = data[self.coordinates].apply(self._to_mercator, axis=1)
         return data
 
     @staticmethod
@@ -148,12 +152,12 @@ class PreProcess():
         return pd.Series((x, y))
 
     @staticmethod
-    def _discretize_time(self,data):
+    def _discretize_time(data):
         data['day_moment'] = ''
         conditions = [
-            not (data['hour'] < 12),
-            not (data['hour'] >= 12) & (data['hour'] < 18),
-            not (data['hour'] >= 18)
+            (not (data['hour'] < 12)),
+            (not ((data['hour'] >= 12) & (data['hour'] < 18))),
+            (not (data['hour'] >= 18))
         ]
         data['day_moment'].where(conditions[0], 'MORNING',inplace=true)
         data['day_moment'].where(conditions[1], 'AFTERNOON' ,inplace=true)
@@ -163,10 +167,36 @@ class PreProcess():
 
 
 def main():
-    df = pd.read_csv('../data/siri.20130101.csv.gz')
-    preprocess = PreProcess()
+    features = [
+        'timestamp','line_id','direction','journey_id',
+        'time_frame','vehicle_journey_id','operator',
+        'congestion','lng','lat','delay','block_id',
+        'vehicle_id','stop_id', 'stop'
+    ]
+
+    df = pd.read_csv('../data/siri.20130101.csv.gz', names=features)
+
+    trajetoria = [
+        'line_id', 'journey_id', 'time_frame',
+        'vehicle_journey_id', 'operator', 'vehicle_id'
+    ]
+
+    list_cats = [
+        'line_id', 'journey_id' , 'time_frame',
+        'vehicle_journey_id', 'operator', 'block_id',
+        'vehicle_id', 'stop_id'
+    ]
+
+    preprocess = PreProcess(
+        trajetoria, ['lat','lng'], 50,
+        list_cats, timestamp='timestamp',
+        timestamp_unit='us'
+    )
+
     df = preprocess(df)
+    return df
+
 
 if __name__ == '__main__':
-    #main()
+    main()
 
