@@ -1,9 +1,11 @@
 # its_research
-we are developing possible solutions to solve problems in the context of Intelligent Transportation System.
+We are developing possible solutions to solve problems in the context of Intelligent Transportation System.
 More precisely, labeling problems and anomaly detection on bus trajectory (GPS). 
 
 # Disclaimer
 The preprocessed data from Dublin is available at:
+https://drive.google.com/file/d/1tkpxtFulyWQhcaRuCqsDVMBLWW8UN3LL/view?usp=sharing
+https://drive.google.com/file/d/1FmjM2Xi-mbwZALOTQcHBEgmg7uc71zwq/view?usp=sharing
 
 All Recife data is private.
 
@@ -18,5 +20,16 @@ We aim to detect anomalous bus trajectories using supervised learning. Thus, we 
 the typical behavior of buses but, instead of performing a hard detection decision as literature approaches, ou solution calculates an anomaly score based on the uncertainty of the classifier.
 
 ## Contents
-* Requirements
+* Requirements:
+* library versions:
+    * numpy = 1.18.1
+    * h5py = 1.10.4
+    * tensorflow = 2.1.0 
+    * h3 = 3.4.3
+    * gmplot = 1.2.0
+    * scikit-learn = 0.22.2
+    * scipy = 1.4.1
+    * gensim = 3.8.0
+    * keras = 2.3.1
+    * plotly = 4.5.4
 * Models
