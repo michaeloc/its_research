@@ -80,9 +80,14 @@ class PreProcess():
         '''
         data = [x for _,x in data.groupby(self.traj_ID) if (len(x) > self.min_points)]
         # Chamas calc_deltas para cada trajetória
-        data = list(map(self._calc_deltas,data))
+        data = list(map(self._visit_old_point,data))
         #concatena as trajetorias de volta em um DF unico
         return pd.concat(data)
+
+    def _visit_old_point(self, data_trajetoria):
+        data_trajetoria = self._calc_deltas(data_trajetoria)
+        data_trajetoria = self._calc_bearing(data_trajetoria)
+        return data_trajetoria
 
     @staticmethod
     def _delta_time(t1, t2):
@@ -121,6 +126,29 @@ class PreProcess():
         data_trajetoria['time_old_point'] = [0, *delta_t]
         data_trajetoria = self._remove_deltatime_gt_5min(data_trajetoria)
         return data_trajetoria
+
+    def _calc_bearing(self, data_trajetoria):
+        bearing = list(map(
+            lambda x, y: self._bearing(x,y),
+            data_trajetoria[self.timestamp].shift(1).values[1:]
+            data_trajetoria[self.timestamp].values[1:],
+        ))
+        data_trajetoria['bearing'] = [*bearing, None]
+        return data_trajetoria
+
+    def _bearing(self, point1, point2):
+        lat1 = math.radians(point1[0])
+
+        lat2 = math.radians(point2[0])
+
+        y = math.sin(math.radians(point2[1] - point1[1])) * math.cos(lat2)
+
+        x = math.cos(lat1) * math.sin(lat2) - (
+            math.sin(lat1) * math.cos(lat2) *
+            math.cos(math.radians(point2[1] - point1[1])))
+
+        deg = math.degrees(math.atan2(y, x))
+        return (deg + 360) % 360
 
     def _remove_deltatime_gt_5min(self, trajetoria):
         trajetoria.sort_values('timestamp')
