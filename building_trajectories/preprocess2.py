@@ -1,35 +1,67 @@
+import math
 import pandas as pd
 import numpy as np
-import math
 from geopy.distance import geodesic
+from sqlalchemy import create_engine
+from sqlalchemy.dialects import postgresql
 
 class PreProcess():
 
-    def __init__(self, traj_ID: list, coordinates, min_points=50,
-                 categories=[], booleans=[], timestamp='',
-                 timestamp_unit='', drops=[]):
+    def __init__(self, traj_ID: list, coordinates,
+                 #types_psql,
+                 categories=[], booleans=[], ints=[], drops=[],
+                 timestamp='', timestamp_unit='', min_points=50):
         self.traj_ID_list = traj_ID
         self.coordinates = coordinates
         self.min_points = min_points
         self.categories = categories
         self.booleans = booleans
+        self.ints = ints
+        self.types_psql = dict(zip(traj_ID, types_psql))
+        self.table_meta = ''
+        self.table_points = ''
         self.timestamp = timestamp
         self.timestamp_unit = timestamp_unit
         self.drops = drops
 
     def __call__(self, data):
         data = self.clean_data(data)
-        data = self.make_ID(data)
         data = self.set_types(data)
+        meta_table = self._save_trajectories_metadata(data, self.types_psql)
+        data = self.add_ID(data, meta_table)
         data = self.set_new_features(data)
         return data
+
+    def _save_trajectories_metadata(self, data):
+        self.engine = create_engine('')
+        data.to_sql(
+            self.table_meta,
+            engine,
+            if_exists='append',
+            index=False,
+            dtype=self.types_psql
+        )
+        self.meta_table = pd.read_sql_table(
+            'dublin',
+            self.engine
+        )
+        return meta_table
 
     def clean_data(self, data):
         data.drop(self.drops, axis=1, inplace=True)
         ##retirar linhas com NAN nos campos da chave
         return data
 
+    def add_ID(self, data):
+        data = self._divide_to_map(data, make_ID)
+        return data
+
     def make_ID(self, data):
+        query = "line_id == {} & journey_id == '{}' &  time_frame == '{}' & vehicle_journey_id == {} & operator == '{}' & vehicle_id == {}".format(*data[trajetoria].iloc[0])
+        data['trajectory_id'] = self.meta_table.query(query).trajectory_id.iloc[0]
+        return data
+
+    def _make_ID(self, data):
         if (len(self.traj_ID_list)==1):
             self.traj_ID = self.traj_ID_list[0]
         else:
@@ -41,6 +73,7 @@ class PreProcess():
     def set_types(self, data):
         data[self.categories] = data[self.categories].astype('category')
         data[self.booleans] = data[self.booleans].astype('bool')
+        data[self.ints] = data[self.ints].astype('int')
         data[ f'_{self.timestamp}'] = pd.to_datetime(data.timestamp, unit=self.timestamp_unit)
         return data
 
@@ -51,7 +84,7 @@ class PreProcess():
         data['day']= data[ f'_{self.timestamp}'].dt.day
         data['hour']= data[ f'_{self.timestamp}'].dt.hour
         data['minute']= data[ f'_{self.timestamp}'].dt.minute
-        data = self._add_deltas(data)
+        data = self._visit_old_point(data)
         data = self._add_speed(data)
         data = self._add_acceleration(data)
         data = self.create_mercator_coord(data)
@@ -80,14 +113,28 @@ class PreProcess():
         '''
         data = [x for _,x in data.groupby(self.traj_ID) if (len(x) > self.min_points)]
         # Chamas calc_deltas para cada trajetória
-        data = list(map(self._visit_old_point,data))
+        data = list(map(self._calc_deltas,data))
         #concatena as trajetorias de volta em um DF unico
         return pd.concat(data)
 
-    def _visit_old_point(self, data_trajetoria):
-        data_trajetoria = self._calc_deltas(data_trajetoria)
-        data_trajetoria = self._calc_bearing(data_trajetoria)
-        return data_trajetoria
+    def _add_bearing(self, data_trajetoria):
+        data = [x for _,x in data.groupby(self.traj_ID) if (len(x) > self.min_points)]
+        data = list(map(self._calc_bearing,data))
+        #concatena as trajetorias de volta em um DF unico
+        return pd.concat(data)
+
+    def _divide_to_map(self, data, func):
+        data = [x for _,x in data.groupby(self.traj_ID) if (len(x) > self.min_points)]
+        data = list(map(func,data))
+        #concatena as trajetorias de volta em um DF unico
+        return pd.concat(data)
+
+    def _visit_old_point(self, data):
+        data = self._divide_to_map(data,self._calc_deltas)
+        data = self._divide_to_map(data,self._calc_bearing)
+        #data = self._calc_deltas(data)
+        #data = self._calc_bearing(data)
+        return data
 
     @staticmethod
     def _delta_time(t1, t2):
@@ -130,10 +177,10 @@ class PreProcess():
     def _calc_bearing(self, data_trajetoria):
         bearing = list(map(
             lambda x, y: self._bearing(x,y),
-            data_trajetoria[self.timestamp].shift(1).values[1:]
-            data_trajetoria[self.timestamp].values[1:],
+            data_trajetoria[self.coordinates].shift(1).values[1:],
+            data_trajetoria[self.coordinates].values[1:],
         ))
-        data_trajetoria['bearing'] = [*bearing, None]
+        data_trajetoria['bearing'] = [*bearing, np.nan]
         return data_trajetoria
 
     def _bearing(self, point1, point2):
@@ -147,7 +194,7 @@ class PreProcess():
             math.sin(lat1) * math.cos(lat2) *
             math.cos(math.radians(point2[1] - point1[1])))
 
-        deg = math.degrees(math.atan2(y, x))
+        deg = math.degrees(math.atan2(x, y))
         return (deg + 360) % 360
 
     def _remove_deltatime_gt_5min(self, trajetoria):
@@ -196,24 +243,36 @@ class PreProcess():
 
 def main():
     features = [
-        'timestamp','line_id','direction','journey_id',
-        'time_frame','vehicle_journey_id','operator',
-        'congestion','lng','lat','delay','block_id',
-        'vehicle_id','stop_id', 'stop'
+        'timestamp', 'line_id', 'direction',
+        'journey_id', 'time_frame', 'vehicle_journey_id',
+        'operator', 'congestion','lng',
+        'lat', 'delay', 'block_id',
+        'vehicle_id', 'stop_id', 'stop'
     ]
 
     df = pd.read_csv('../data/siri.20130101.csv.gz', names=features)
 
     trajetoria = [
-        'line_id', 'journey_id', 'time_frame',
-        'vehicle_journey_id', 'operator', 'vehicle_id'
+        'line_id',
+        'journey_id',
+        'time_frame',
+        'vehicle_journey_id',
+        'operator',
+        'vehicle_id'
     ]
 
     list_cats = [
-        'line_id', 'journey_id' , 'time_frame',
-        'vehicle_journey_id', 'operator', 'block_id',
-        'vehicle_id', 'stop_id'
+        #'line_id',
+        'journey_id' ,
+        'time_frame',
+        #'vehicle_journey_id',
+        'operator',
+        'block_id',
+        #'vehicle_id',
+        'stop_id'
     ]
+
+
 
     preprocess = PreProcess(
         trajetoria, ['lat','lng'], 50,
