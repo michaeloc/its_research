@@ -1,0 +1,28 @@
+Help on module spark:
+
+NNAAMMEE
+    spark
+
+FFUUNNCCTTIIOONNSS
+    aaddjjuusstt__ttyyppeess(data)
+    
+    cclleeaann__ddaattaa(data)
+    
+    ccrreeaattee__sseenntteenncceess(data, trajectory_features) -> list
+    
+    ddeellttaa__ttiimmee(t1, t2) -> float
+    
+    iiss__vvaalliidd__ppooiinntt(data, idx, actual_trajectory)
+    
+    iiss__wwiinnddooww(delta_time)
+    
+    uunniiqquuee__ttrraajjeeccttoorriieess__ttuuppllee(data, features)
+
+DDAATTAA
+    ccoooorrddiinnaatteess = {'dublin': ['lng', 'lat']}
+    ddaattaasseett = 'dublin'
+    ttrreesshhoolldd = 50
+
+FFIILLEE
+    /home/saci/hd/projetos/trajetorias/its_research/building_trajectories/spark.py
+

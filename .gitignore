@@ -4,3 +4,4 @@ dublin/dublin
 *.npy
 recife/GTFSjaneiro
 venvTraj
+**/__pycache__/**
