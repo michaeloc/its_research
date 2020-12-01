@@ -1,4 +1,5 @@
 # Don't track content of these folders
+tmp/
 data/
 dublin/dublin
 *.npy
