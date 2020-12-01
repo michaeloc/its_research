@@ -1,4 +1,5 @@
 # Don't track content of these folders
+building_trajectories/secrets.py
 tmp/
 data/
 dublin/dublin
