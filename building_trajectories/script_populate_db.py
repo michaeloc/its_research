@@ -58,7 +58,18 @@ def features_engineering(df):
     feat = Feat_eng(['lat', 'lng'], timestamp='timestamp')
     df = feat(df)
 
+
+def delete_past_db():
+    print('Deleting previous databases')
+    conn = engine.connect()
+    conn.execute('DELETE FROM dublin_trajectories;')
+    conn.execute('DELETE FROM dublin;')
+    print('Done!')
+
 if __name__ == '__main__':
+
+    delete_past_db()
+
     preprocess = preproc.PreProcess(
         trajetoria, ['lat', 'lng'], TYPES_PSQL, ints=list_ints,
         timestamp='timestamp', timestamp_unit='us')
