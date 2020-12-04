@@ -30,6 +30,7 @@ def save_trajectories_points(data):
     data = transform_columns(data)
     psql_types_pt = dict(zip(data.columns, PSQL_TYPE_PT))
     print(psql_types_pt)
+    data = data.sort_values('instant')
     save_in_db(data,'dublin_trajectories', psql_types_pt)
 
 def add_ID(data):
