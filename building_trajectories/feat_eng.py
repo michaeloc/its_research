@@ -11,11 +11,11 @@ class Feat_eng():
 
     def __call__(self, data):
         print('Setting new features')
-        data['year']= data[ f'_{self.timestamp}'].dt.year
-        data['month']= data[ f'_{self.timestamp}'].dt.month
-        data['day']= data[ f'_{self.timestamp}'].dt.day
-        data['hour']= data[ f'_{self.timestamp}'].dt.hour
-        data['minute']= data[ f'_{self.timestamp}'].dt.minute
+        data['year'] = data[ f'_{self.timestamp}'].dt.year
+        data['month'] = data[ f'_{self.timestamp}'].dt.month
+        data['day'] = data[ f'_{self.timestamp}'].dt.day
+        data['hour'] = data[ f'_{self.timestamp}'].dt.hour
+        data['minute'] = data[ f'_{self.timestamp}'].dt.minute
         data = self._visit_old_point(data)
         data = self._add_speed(data)
         data = self._add_acceleration(data)
@@ -42,7 +42,7 @@ class Feat_eng():
 
     def _divide_to_map(self, data, func):
         data = data.sort_values('timestamp')
-        data = [x for _,x in data.groupby('trajectory_id'_list)]
+        data = [x for _,x in data.groupby('trajectory_id')]
         data = list(map(func,data))
         #concatena as trajetorias de volta em um DF unico
         return pd.concat(data)
@@ -119,12 +119,13 @@ class Feat_eng():
         if (len(gt5min2oldpoint) == 0):
             return trajetoria
         ts = gt5min2oldpoint[self.timestamp].values[0]
-        if (len(trajetoria[trajetoria[self.timestamp] <= ts]) < 50):
+        return None
+        #if (len(trajetoria[trajetoria[self.timestamp] <= ts]) < 50):
             #exclui todo mundo no caso de não ter 50 pontos restantes
-            return None
-        else:
-            # exclui só do ponto problemático em diante
-            return trajetoria[trajetoria[self.timestamp] < ts]
+       #     return None
+       # else:
+       #     # exclui só do ponto problemático em diante
+       #     return trajetoria[trajetoria[self.timestamp] < ts]
 
     def create_mercator_coord(self, data):
         data[['lat_mercator','lng_mercator']] = data[self.coordinates].apply(self._to_mercator, axis=1)
