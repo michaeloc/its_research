@@ -14,7 +14,6 @@ Jinja2==2.11.2
 joblib==0.16.0
 jupyter-client==6.1.7
 jupyter-core==4.6.3
-kiwisolver==1.2.0
 MarkupSafe==1.1.1
 matplotlib==3.3.2
 mccabe==0.6.1

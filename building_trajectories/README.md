@@ -5,7 +5,7 @@
 - Gera novas informações
 - Armazena trajetórias
 
-## Dublin Bus GPS sample data from Dublin City Council (Insight Project)
+## FONTE do dataset: Dublin Bus GPS sample data from Dublin City Council (Insight Project)
 
 Bus GPS Data Dublin Bus GPS data across Dublin City, from Dublin **City Council'traffic control**, in csv format. 
 
@@ -30,10 +30,15 @@ Each datapoint (row in the CSV file) has the following entries:
 ## Hipótose sobre unicidade das trajetórias
 
 Destes os seguintes atributos nos indicam uma trajetória única
-(diferencia também trechos diferentes de uma mesma linha, ex: ida e
+(segrega também trechos diferentes de uma mesma linha, ex: ida e
 volta)
 
 ``` python
 trajetoria = ['line_id','journey_id','time_frame','vehicle_journey_id','operator','vehicle_id']
 ```
 
+## Limpeza de outliers
+
+### Técnicas utilizadas / # pontos/trajetórias filtradas
+
+## Schema DB
