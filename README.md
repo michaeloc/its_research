@@ -19,6 +19,15 @@ It is a stacked deep-learning model composed of recurrent and attention layers t
 We aim to detect anomalous bus trajectories using supervised learning. Thus, we  propose a multi-class classifier that learns 
 the typical behavior of buses but, instead of performing a hard detection decision as literature approaches, ou solution calculates an anomaly score based on the uncertainty of the classifier.
 
+## Applying A Transformer Language Model for Anomaly Detection in Bus Trajectories
+* Contents:
+   * process_dublin.py
+   * pipeline_to_generate_data.py
+   * preprocess_recife.py
+   * run_loop_transformer.py
+   * transformer_model.py
+ 
+
 ## Contents
 * Requirements:
 * library versions:
