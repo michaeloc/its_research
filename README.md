@@ -26,7 +26,9 @@ the typical behavior of buses but, instead of performing a hard detection decisi
    * preprocess_recife.py
    * run_loop_transformer.py
    * transformer_model.py
- 
+
+The preprocessed data to test our solution is available at:
+https://drive.google.com/file/d/12cDmUdY5lDEcLzBDaPtAGzs66MokqfuY/view?usp=sharing
 
 ## Contents
 * Requirements:
