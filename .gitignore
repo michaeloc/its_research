@@ -1,0 +1,9 @@
+*.hdf5
+*.h5
+*.pkl
+data/
+new_train_data/
+__pycache__/
+*.pyc
+.DS_Store
+.ipynb_checkpoints/
